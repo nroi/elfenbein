@@ -12,20 +12,20 @@ data class Graph(val nodes: List<Node>) {
 
     fun kahn(): List<Node> {
 
-        // graph[i][k] = true iff edge exists from nodes[k] to nodes[i]
+        // graph[i][k] = true iff edge exists from nodes[i] to nodes[k]
         val graph = array2dOfBoolean(nodes.size, nodes.size).apply {
             for (destination in nodes) {
                 val i = nodes.indexOf(destination)
                 for (source in destination.incoming) {
                     val k = nodes.indexOf(source)
-                    this[i][k] = true
+                    this[k][i] = true
                 }
             }
         }
 
-        fun edgeExists(source: Int, destination: Int) = graph[destination][source]
+        fun edgeExists(source: Int, destination: Int) = graph[source][destination]
         fun deleteEdge(source: Int, destination: Int) {
-            graph[destination][source] = false
+            graph[source][destination] = false
         }
 
         val topologicalSortOrder = mutableListOf<Node>()
