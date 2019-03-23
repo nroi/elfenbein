@@ -5,7 +5,7 @@ import space.xnet.Graph
 import space.xnet.Node
 
 
-class PropertyExample : StringSpec({
+class GraphTest : StringSpec({
 
     fun <T> permute(input: List<T>): List<List<T>> {
         if (input.size == 1) {
