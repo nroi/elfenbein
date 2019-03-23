@@ -2,11 +2,7 @@ package space.xnet
 
 import java.util.*
 
-data class Node(val incoming: List<Node>, val name: String) {
-    fun depth(): Int {
-        TODO()
-    }
-}
+data class Node(val incoming: List<Node>, val name: String)
 
 private fun array2dOfBoolean(sizeOuter: Int, sizeInner: Int): Array<BooleanArray>
         = Array(sizeOuter) { BooleanArray(sizeInner) }

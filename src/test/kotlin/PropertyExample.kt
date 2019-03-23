@@ -39,4 +39,16 @@ class PropertyExample : StringSpec({
             sorted.indexOf(n3) shouldBeLessThan sorted.indexOf(n4)
         }
     }
+
+    "test all getters" {
+        val node = Node(listOf(), "a very nice name.").apply {
+            name shouldBe "a very nice name."
+            incoming shouldBe listOf()
+        }
+
+        Graph(listOf(node)).apply {
+            nodes shouldBe listOf(node)
+        }
+
+    }
 })
