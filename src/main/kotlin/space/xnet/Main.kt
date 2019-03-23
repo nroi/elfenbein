@@ -2,15 +2,15 @@ package space.xnet
 
 import java.util.*
 
-data class Node(val incoming: List<Node>, val name: String)
+data class Node<T>(val incoming: List<Node<T>>, val payload: T)
 
 private fun array2dOfBoolean(sizeOuter: Int, sizeInner: Int): Array<BooleanArray>
         = Array(sizeOuter) { BooleanArray(sizeInner) }
 
 
-data class Graph(val nodes: List<Node>) {
+data class Graph<T>(val nodes: List<Node<T>>) {
 
-    fun kahn(): List<Node> {
+    fun kahn(): List<Node<T>> {
 
         // graph[i][k] = true iff edge exists from nodes[i] to nodes[k]
         val graph = array2dOfBoolean(nodes.size, nodes.size).apply {
@@ -28,7 +28,7 @@ data class Graph(val nodes: List<Node>) {
             graph[source][destination] = false
         }
 
-        val topologicalSortOrder = mutableListOf<Node>()
+        val topologicalSortOrder = mutableListOf<Node<T>>()
 
         // start with all nodes that do not have any incoming edges
         val currentNodeIndices = Stack<Int>().apply {

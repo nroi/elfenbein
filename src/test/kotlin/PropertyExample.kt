@@ -42,7 +42,7 @@ class PropertyExample : StringSpec({
 
     "test all getters" {
         val node = Node(listOf(), "a very nice name.").apply {
-            name shouldBe "a very nice name."
+            payload shouldBe "a very nice name."
             incoming shouldBe listOf()
         }
 
