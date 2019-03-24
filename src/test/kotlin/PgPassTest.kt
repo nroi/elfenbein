@@ -12,11 +12,11 @@ class PgPassTest : StringSpec({
         val testFileContent = "localhost:5432:mydatabase:myusername:mypassword"
         val entry = PgPassEntry(
             "localhost",
-            5432,
+            "5432",
             "mydatabase",
             "myusername",
             "mypassword")
-        parsePgPass(testFileContent) shouldBe listOf(entry)
+        parsePgPass(listOf(testFileContent)) shouldBe listOf(entry)
     }
 
     "parsing should not fail due to leading or trailing newlines" {
@@ -25,19 +25,19 @@ class PgPassTest : StringSpec({
         val testFileContent3 = "\nlocalhost:5432:mydatabase:myusername:mypassword\n\n\n"
         val entry = PgPassEntry(
             "localhost",
-            5432,
+            "5432",
             "mydatabase",
             "myusername",
             "mypassword")
-        parsePgPass(testFileContent1) shouldBe listOf(entry)
-        parsePgPass(testFileContent2) shouldBe listOf(entry)
-        parsePgPass(testFileContent3) shouldBe listOf(entry)
+        parsePgPass(listOf(testFileContent1)) shouldBe listOf(entry)
+        parsePgPass(listOf(testFileContent2)) shouldBe listOf(entry)
+        parsePgPass(listOf(testFileContent3)) shouldBe listOf(entry)
     }
 
     "parsing should fail for malformed entries" {
         assertFailsWith<IllegalArgumentException> {
             val testFileContent = "localhost:5432:mydatabase:myusername:mypassword:::"
-            parsePgPass(testFileContent)
+            parsePgPass(listOf(testFileContent))
         }
     }
 
