@@ -1,6 +1,7 @@
 package space.xnet
 
 import java.sql.DriverManager
+import java.sql.SQLException
 
 
 fun main(args: Array<String>) {
@@ -49,7 +50,25 @@ fun connect(url: String, user: String, password: String) {
         }
 
         val kahn = kahnFromArray(graph, views)
-        println("dependencies: " + kahn)
+        for (k in kahn) {
+            val statementString = k.payload.getStatement()
+            val refreshStatement = usedConnection.prepareStatement(statementString)
+            println(statementString)
+            try {
+                refreshStatement.execute()
+            } catch (e: SQLException) {
+                if (e.message?.contains("cannot refresh materialized view") == true &&
+                    e.message?.contains("concurrently") == true) {
+                    println(e.message)
+                    val fallbackStatementString = k.payload.getFallbackStatement()
+                    val fallbackRefreshStatement = usedConnection.prepareStatement(fallbackStatementString)
+                    println("attempt to refresh non-concurrently")
+                    println(fallbackStatementString)
+                    fallbackRefreshStatement.execute()
+                } else {
+                    throw e
+                }
+            }
+        }
     }
-
 }

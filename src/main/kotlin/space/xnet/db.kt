@@ -16,7 +16,15 @@ data class PgPassEntry(val hostname: String,
 }
 
 
-data class MaterializedView(val schema: String, val name: String)
+data class MaterializedView(val schema: String, val name: String) {
+    fun getStatement(): String {
+        return "refresh materialized view concurrently $schema.$name"
+    }
+
+    fun getFallbackStatement(): String {
+        return "refresh materialized view $schema.$name"
+    }
+}
 
 
 fun parsePgPass(lines: List<String>): List<PgPassEntry> {

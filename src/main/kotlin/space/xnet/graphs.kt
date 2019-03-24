@@ -2,7 +2,12 @@ package space.xnet
 
 import java.util.*
 
-data class Node<T>(val incoming: Set<Node<T>>, val payload: T)
+data class Node<T>(val incoming: Set<Node<T>>, val payload: T) {
+    fun toShortString(): String {
+        val incomingPayloads = incoming.map { it.payload }
+        return "Node(incoming = [$incomingPayloads], payload = $payload)"
+    }
+}
 
 fun array2dOfBoolean(sizeOuter: Int, sizeInner: Int): Array<BooleanArray>
         = Array(sizeOuter) { BooleanArray(sizeInner) }
