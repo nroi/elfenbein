@@ -2,9 +2,9 @@ package space.xnet
 
 import java.util.*
 
-data class Node<T>(val incoming: List<Node<T>>, val payload: T)
+data class Node<T>(val incoming: Set<Node<T>>, val payload: T)
 
-private fun array2dOfBoolean(sizeOuter: Int, sizeInner: Int): Array<BooleanArray>
+fun array2dOfBoolean(sizeOuter: Int, sizeInner: Int): Array<BooleanArray>
         = Array(sizeOuter) { BooleanArray(sizeInner) }
 
 
@@ -23,36 +23,61 @@ data class Graph<T>(val nodes: List<Node<T>>) {
             }
         }
 
-        fun edgeExists(source: Int, destination: Int) = graph[source][destination]
-        fun deleteEdge(source: Int, destination: Int) {
-            graph[source][destination] = false
+        val node2Payload = nodes.map {
+            it.payload
         }
 
-        val topologicalSortOrder = mutableListOf<Node<T>>()
+        return kahnFromArray(graph, node2Payload)
+    }
+}
 
-        // start with all nodes that do not have any incoming edges
-        val currentNodeIndices = Stack<Int>().apply {
-            addAll(nodes.indices.filter { nodes[it].incoming.isEmpty() })
-        }
 
-        while (currentNodeIndices.isNotEmpty()) {
-            val nIdx = currentNodeIndices.pop()!!
-            val n = nodes[nIdx]
-            topologicalSortOrder.add(n)
-
-            val reachableFromN = nodes.indices.filter { edgeExists(source = nIdx, destination = it) }
-
-            for (destinationIdx in reachableFromN) {
-                deleteEdge(source = nIdx, destination = destinationIdx)
-                val noIncomingEdges = nodes.indices.all { !edgeExists(it, destinationIdx) }
-                if (noIncomingEdges) {
-                    // after the edges have been deleted, a new node without any incoming edges exists.
-                    currentNodeIndices.push(destinationIdx)
-                }
-            }
-        }
-
-        return topologicalSortOrder.toList()
+fun<T> kahnFromArray(array: Array<BooleanArray>, idx2Payload: List<T>): List<Node<T>> {
+    fun edgeExists(source: Int, destination: Int) = array[source][destination]
+    fun deleteEdge(source: Int, destination: Int) {
+        array[source][destination] = false
     }
 
+    val originalArray = array2dOfBoolean(array.size, array.size).apply {
+        for (i in array.indices) {
+            for (k in array.indices) {
+                this[i][k] = array[i][k]
+            }
+        }
+    }
+
+    val topologicalSortOrder = mutableListOf<Node<T>>()
+
+    // start with all nodes that do not have any incoming edges
+    val currentNodeIndices = Stack<Int>().apply {
+        val nodesNoIncomingEdges = array.indices.filter { i ->
+            array.indices.none { k -> array[k][i] }
+        }
+        addAll(nodesNoIncomingEdges)
+    }
+
+    while (currentNodeIndices.isNotEmpty()) {
+        val nIdx = currentNodeIndices.pop()!!
+
+        val incomingNodesOfNodeToAdd = originalArray.indices.filter { i ->
+            originalArray[i][nIdx]
+        }.map { idx ->
+            topologicalSortOrder.find { node -> node.payload == idx2Payload[idx] }!!
+        }.toSet()
+        val newNode = Node(incomingNodesOfNodeToAdd, idx2Payload[nIdx])
+        topologicalSortOrder.add(newNode)
+
+        val reachableFromN = array.indices.filter { edgeExists(source = nIdx, destination = it) }
+
+        for (destinationIdx in reachableFromN) {
+            deleteEdge(source = nIdx, destination = destinationIdx)
+            val noIncomingEdges = array.indices.all { !edgeExists(it, destinationIdx) }
+            if (noIncomingEdges) {
+                // after the edges have been deleted, a new node without any incoming edges exists.
+                currentNodeIndices.push(destinationIdx)
+            }
+        }
+    }
+
+    return topologicalSortOrder.toList()
 }

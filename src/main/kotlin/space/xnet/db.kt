@@ -16,6 +16,9 @@ data class PgPassEntry(val hostname: String,
 }
 
 
+data class MaterializedView(val schema: String, val name: String)
+
+
 fun parsePgPass(lines: List<String>): List<PgPassEntry> {
 
     fun fromLine(line: String): PgPassEntry {
