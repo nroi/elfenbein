@@ -3,9 +3,12 @@ plugins {
 }
 
 apply plugin: 'jacoco'
+apply plugin: 'application'
 
 group 'elfenbein'
 version '1.0-SNAPSHOT'
+
+mainClassName = "space.xnet.MainKt"
 
 repositories {
     mavenCentral()

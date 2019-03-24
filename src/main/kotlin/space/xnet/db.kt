@@ -37,10 +37,9 @@ fun getPgPassEntryFromEnv(): PgPassEntry? {
     val port = System.getenv("PGPORT") ?: "5432"
     val database = System.getenv("PGDATABASE") ?: "postgres"
     val user = System.getenv("PGUSER") ?: "postgres"
-
     val homeDir = System.getenv("HOME")!!
 
-    val lines = File(homeDir).readLines()
+    val lines = File(homeDir, ".pgpass").readLines()
 
     return parsePgPass(lines).find { pgPassEntry ->
         val pgPassEntryFromEnv = PgPassEntry(host, port, database, user, pgPassEntry.password)
