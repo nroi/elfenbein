@@ -1,17 +1,26 @@
 package space.xnet
 
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.options.option
 import java.sql.DriverManager
 import java.sql.SQLException
 
+class Command: CliktCommand() {
+    private val schema by option(metavar="SCHEMA", help="refresh only materialized views in the given schema")
 
-fun main(args: Array<String>) {
-
-    val result = getPgPassEntryFromEnv()!!
-    val sslMode = System.getenv("PGSSLMODE")
-    connect(result.toJdbcUrl(sslMode), result.user, result.password)
+    override fun run() {
+        val result = getPgPassEntryFromEnv()!!
+        val sslMode = System.getenv("PGSSLMODE")
+        refresh(result.toJdbcUrl(sslMode), result.user, result.password, schema)
+    }
 }
 
-fun connect(url: String, user: String, password: String) {
+
+fun main(args: Array<String>) {
+    Command().main(args)
+}
+
+fun refresh(url: String, user: String, password: String, onlySchema: String?) {
 
     val matViewsDependenciesQuery = Thread.currentThread().contextClassLoader
         .getResource("mat_views_dependencies.sql")
@@ -51,6 +60,10 @@ fun connect(url: String, user: String, password: String) {
 
         val kahn = kahnFromArray(graph, views)
         for (k in kahn) {
+            if (onlySchema != null && k.payload.schema != onlySchema) {
+                println("Skip materialized view ${k.payload.schema}.${k.payload.name}")
+                continue
+            }
             val statementString = k.payload.getStatement()
             val refreshStatement = usedConnection.prepareStatement(statementString)
             println(statementString)
