@@ -70,8 +70,7 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
             try {
                 refreshStatement.execute()
             } catch (e: SQLException) {
-                if (e.message?.contains("cannot refresh materialized view") == true &&
-                    e.message?.contains("concurrently") == true) {
+                if (e.message?.toLowerCase()?.contains("concurrently") == true) {
                     println(e.message)
                     val fallbackStatementString = k.payload.getFallbackStatement()
                     val fallbackRefreshStatement = usedConnection.prepareStatement(fallbackStatementString)
