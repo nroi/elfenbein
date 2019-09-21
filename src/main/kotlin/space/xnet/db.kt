@@ -17,13 +17,26 @@ data class PgPassEntry(val hostname: String,
 
 
 data class MaterializedView(val schema: String, val name: String) {
-    fun getStatement(): String {
+    fun getRefreshStatement(): String {
         return "refresh materialized view concurrently $schema.$name"
     }
 
-    fun getFallbackStatement(): String {
+    fun getRefreshFallbackStatement(): String {
         return "refresh materialized view $schema.$name"
     }
+
+    fun getDurationLogTableStatement(): String =
+        "create table if not exists $schema.mat_view_refresh_times (" +
+                "id bigserial," +
+                "schema text not null," +
+                "mat_view text not null," +
+                "refresh_start timestamptz not null," +
+                "refresh_end timestamptz not null," +
+                "duration interval not null);"
+
+    fun getDurationLogStatement(): String =
+        "insert into $schema.mat_view_refresh_times (schema, mat_view, refresh_start, refresh_end, duration) " +
+                "values  ('$schema', '$name', now(), clock_timestamp(), clock_timestamp() - now());"
 }
 
 
