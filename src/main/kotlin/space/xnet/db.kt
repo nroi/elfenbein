@@ -10,7 +10,11 @@ data class PgPassEntry(val hostname: String,
                        val password: String) {
 
     fun toJdbcUrl(sslMode: String?): String {
-        val suffix = if (sslMode != null) "?sslmode=$sslMode" else ""
+        val applicationName = "elfenbein"
+        val suffix = if (sslMode != null)
+            "?sslmode=$sslMode&ApplicationName=$applicationName"
+        else
+            "?ApplicationName=$applicationName"
         return "jdbc:postgresql://$hostname:$port/$database$suffix"
     }
 }
