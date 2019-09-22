@@ -4,26 +4,28 @@ import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ForkJoinPool
 
-private const val NUM_THREADS = 2
+sealed class TaskAction <out T>
+object NoTasksLeft : TaskAction<Nothing>()
+class TaskToExecute <T> (val task: T) : TaskAction<T>()
 
-interface Task {
-    operator fun invoke()
+sealed class TaskDescription <T>(val tasks: List<T>)
+
+class Dependency <T> (val providerTasks: List<T>, val dependentTask: T) : TaskDescription<T>(providerTasks.plus(dependentTask))
+class Task <T> (task: T) : TaskDescription<T>(listOf(task))
+
+class ExpectDependencies <T> (val tasks: List<Task<T>>) {
+    fun dependencies(vararg dependencies: Dependency<T>): TaskQueue<T> {
+        return TaskQueue(tasks.plus(dependencies))
+    }
 }
 
-sealed class TaskAction
-object NoTasksLeft : TaskAction()
-class TaskToExecute <T: Task> (val task: T) : TaskAction()
+fun <T> T.tasks(tasks: List<T>) = ExpectDependencies(tasks.map { Task(it) })
+fun <T> T.tasks(vararg tasks: T) = this.tasks(tasks.toList())
 
-sealed class TaskDescription <T: Task>(val tasks: List<T>)
+fun <T> T.dependsOn(vararg providerTasks: T) = Dependency(providerTasks.toList(), this)
+fun <T> T.task() = Task(this)
 
-class Dependency <T: Task> (val providerTasks: List<T>, val dependentTask: T) : TaskDescription<T>(providerTasks.plus(dependentTask))
-class IndependentTask <T: Task> (task: T) : TaskDescription<T>(listOf(task))
-
-fun <T: Task> T.dependsOn(vararg providerTasks: T) = Dependency(providerTasks.toList(), this)
-fun <T: Task> T.independent() = IndependentTask(this)
-
-
-class TaskQueue <T: Task> (taskDescriptions: List<TaskDescription<T>>) {
+class TaskQueue <T> (taskDescriptions: List<TaskDescription<T>>) {
 
     private val allTasks = taskDescriptions.flatMap {
         it.tasks
@@ -33,7 +35,7 @@ class TaskQueue <T: Task> (taskDescriptions: List<TaskDescription<T>>) {
 
     private val unfinishedTasks = ConcurrentLinkedQueue(allTasks)
 
-    private fun Task.toIdx() = allTasks.indexOf(this)
+    private fun T.toIdx() = allTasks.indexOf(this)
 
     private val dependencies = taskDescriptions.filterIsInstance<Dependency<T>>()
 
@@ -52,11 +54,11 @@ class TaskQueue <T: Task> (taskDescriptions: List<TaskDescription<T>>) {
         }
     }
 
-    private val tasksWithoutDependencies = ArrayBlockingQueue<TaskAction>(numTasks + 1).apply {
+    private val tasksWithoutDependencies = ArrayBlockingQueue<TaskAction<T>>(numTasks + 1).apply {
         this.addAll(tasksWithoutDependencies().map { TaskToExecute(it) })
     }
 
-    private fun markCompleted(task: Task) {
+    private fun markCompleted(task: T) {
         val previousTasksWithoutDependencies = tasksWithoutDependencies()
         for (i in 0 until numTasks) {
             graph[task.toIdx()][i] = false
@@ -74,14 +76,14 @@ class TaskQueue <T: Task> (taskDescriptions: List<TaskDescription<T>>) {
         unfinishedTasks.remove(task)
     }
 
-    fun runAll() {
-        val pool = ForkJoinPool(NUM_THREADS)
+    fun runParallel(parallelism: Int, block: (T) -> Unit) {
+        val pool = ForkJoinPool(parallelism)
 
         while (unfinishedTasks.isNotEmpty()) {
             when (val newTask = tasksWithoutDependencies.take()) {
-                is TaskToExecute<*> -> {
+                is TaskToExecute<T> -> {
                     pool.submit {
-                        newTask.task()
+                        block(newTask.task)
                         markCompleted(newTask.task)
                         if (unfinishedTasks.isEmpty()) {
                             tasksWithoutDependencies.add(NoTasksLeft)
@@ -96,4 +98,5 @@ class TaskQueue <T: Task> (taskDescriptions: List<TaskDescription<T>>) {
     }
 }
 
-fun <T: Task> taskQueue (vararg taskDescriptions: TaskDescription<T>) = TaskQueue(taskDescriptions.toList())
+fun <T> taskQueue (vararg taskDescriptions: TaskDescription<T>) = TaskQueue(taskDescriptions.toList())
+fun <T> taskQueue (taskDescriptions: List<TaskDescription<T>>) = TaskQueue(taskDescriptions)

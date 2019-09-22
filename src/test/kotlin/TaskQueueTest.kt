@@ -2,13 +2,7 @@ import io.kotlintest.specs.StringSpec
 import space.xnet.*
 import kotlin.random.Random
 
-private class MyTask(val number: Int) : Task {
-    override fun invoke() {
-        println("Hello from $this")
-        Thread.sleep(Random.nextLong(2000, 8000))
-        println("Goodbye from $this")
-    }
-
+private class MyTask(val number: Int) {
     override fun toString() = "MyTask($number)"
 }
 
@@ -27,18 +21,29 @@ class TaskQueueTest : StringSpec({
         val task9 = MyTask(9)
         val task10 = MyTask(10)
 
-        val taskQueue: TaskQueue<MyTask> = taskQueue(
-            task1.independent(),
-            task2.independent(),
-            task3.independent(),
-            task4.independent(),
-            task10.independent(),
+        val taskQueue = tasks(
+            task1,
+            task2,
+            task3,
+            task4,
+            task5,
+            task6,
+            task7,
+            task8,
+            task9,
+            task10
+        ).dependencies(
             task5.dependsOn(task1, task2),
             task6.dependsOn(task2, task4),
             task7.dependsOn(task1, task5),
             task8.dependsOn(task5),
             task9.dependsOn(task8, task3, task6)
         )
-        taskQueue.runAll()
+
+        taskQueue.runParallel(2) { task ->
+            println("Hello from $task")
+            Thread.sleep(Random.nextLong(2000, 8000))
+            println("Goodbye from $task")
+        }
     }
 })

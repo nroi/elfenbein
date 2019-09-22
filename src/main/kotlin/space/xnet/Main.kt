@@ -6,6 +6,8 @@ import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.sql.SQLException
 
+private const val NUM_THREADS = 2
+
 class Command: CliktCommand() {
     private val schema by option(metavar="SCHEMA", help="refresh only materialized views in the given schema")
 
@@ -34,20 +36,23 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
     val views = mutableListOf<MaterializedView>()
 
     val connection = DriverManager.getConnection(url, user, password)
-    connection.use { usedConnection ->
+    val taskDescriptions = connection.use { usedConnection ->
         usedConnection.autoCommit = false
         val matViewsStatement = usedConnection.prepareStatement(matViewsQuery)
         val matViewsResultSet = matViewsStatement.executeQuery()
+
         while (matViewsResultSet.next()) {
             val schema = matViewsResultSet.getString(1)
             val name = matViewsResultSet.getString(2)
             views.add(MaterializedView(schema, name))
         }
 
-        val graph = array2dOfBoolean(views.size, views.size)
-
         val dependenciesStatement = usedConnection.prepareStatement(matViewsDependenciesQuery)
         val dependenciesResultSet = dependenciesStatement.executeQuery()
+
+        val taskDescriptions: MutableList<TaskDescription<MaterializedView>> =
+            views.map { it.task() }.toMutableList()
+
         while (dependenciesResultSet.next()) {
             val sourceSchema = dependenciesResultSet.getString(1)
             val sourceName = dependenciesResultSet.getString(2)
@@ -55,44 +60,46 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
             val destinationName = dependenciesResultSet.getString(4)
             val source = MaterializedView(sourceSchema, sourceName)
             val destination = MaterializedView(destinationSchema, destinationName)
-            val idxSource = views.indexOf(source)
-            val idxDestination = views.indexOf(destination)
-            graph[idxSource][idxDestination] = true
+            taskDescriptions.add(destination.dependsOn(source))
         }
 
-        val kahn = kahnFromArray(graph, views)
-        for (node in kahn) {
-            val matView = node.payload
+        taskDescriptions
+    }
+
+    taskQueue(taskDescriptions).runParallel(NUM_THREADS) { matView ->
+        val threadConnection = DriverManager.getConnection(url, user, password)
+        threadConnection.use { usedConnection ->
+            usedConnection.autoCommit = false
             if (onlySchema != null && matView.schema != onlySchema) {
                 println("Skip materialized view ${matView.schema}.${matView.name}")
-                continue
-            }
-            val statementString = matView.getRefreshStatement()
-            val refreshStatement = usedConnection.prepareStatement(statementString)
-            val logTableStatement = usedConnection.prepareStatement(matView.getDurationLogTableStatement())
-            val durationLogStatement = usedConnection.prepareStatement(matView.getDurationLogStatement())
+            } else {
+                val statementString = matView.getRefreshStatement()
+                val refreshStatement = usedConnection.prepareStatement(statementString)
+                val logTableStatement = usedConnection.prepareStatement(matView.getDurationLogTableStatement())
+                val durationLogStatement = usedConnection.prepareStatement(matView.getDurationLogStatement())
 
-            fun refreshAndLog(refreshStatement: PreparedStatement) {
-                refreshStatement.execute()
-                logTableStatement.execute()
-                durationLogStatement.execute()
-                usedConnection.commit()
-            }
-            println(statementString)
-            try {
-                refreshAndLog(refreshStatement)
-            } catch (e: SQLException) {
-                usedConnection.rollback()
-                if (e.message?.toLowerCase()?.contains("concurrently") == true) {
-                    println(e.message)
-                    val fallbackStatementString = matView.getRefreshFallbackStatement()
-                    val fallbackRefreshStatement = usedConnection.prepareStatement(fallbackStatementString)
-                    println("attempt to refresh non-concurrently")
-                    println(fallbackStatementString)
-                    refreshAndLog(fallbackRefreshStatement)
-                } else {
+                fun refreshAndLog(refreshStatement: PreparedStatement) {
+                    refreshStatement.execute()
+                    logTableStatement.execute()
+                    durationLogStatement.execute()
+                    usedConnection.commit()
+                }
+                println(statementString)
+                try {
+                    refreshAndLog(refreshStatement)
+                } catch (e: SQLException) {
                     usedConnection.rollback()
-                    throw e
+                    if (e.message?.toLowerCase()?.contains("concurrently") == true) {
+                        println(e.message)
+                        val fallbackStatementString = matView.getRefreshFallbackStatement()
+                        val fallbackRefreshStatement = usedConnection.prepareStatement(fallbackStatementString)
+                        println("attempt to refresh non-concurrently")
+                        println(fallbackStatementString)
+                        refreshAndLog(fallbackRefreshStatement)
+                    } else {
+                        usedConnection.rollback()
+                        throw e
+                    }
                 }
             }
         }
