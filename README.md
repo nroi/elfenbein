@@ -1,8 +1,8 @@
 # Elfenbein
 
 Elfenbein helps you to keep all materialized views in a postgresql database up to date. In particular, it
-* Refreshes your materialized views in the correct order, with the transitive dependencies of a materialized view being refreshed before the materialized view itself. For instance, if materialized view `B` depends on materialized view `A` (i.e., `B` reads data from `A`), then `A` will be refreshed before `B`.
-* Gives you an overview of all your materialized views, all dependencies between them, the last time they have been refreshed and the estimated time required to refresh a materialized view with its transitive dependencies.
+refreshes your materialized views in the correct order, with the transitive dependencies of a materialized view being refreshed before the materialized view itself. For instance, if materialized view `B` depends on materialized view `A`, then `A` will be refreshed before `B`.
+
 
 ## Motivation
 You may find elfenbein useful if you have lots of materialized views in a database, especially ina  data warehouse. Just refreshing all of them every 24 hours may be adequate in some scenarios, but leaves room for improvement in other scenarios.
