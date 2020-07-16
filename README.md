@@ -8,7 +8,7 @@ Elfenbein helps you to keep all materialized views in a postgresql database up t
 You may find elfenbein useful if you have lots of materialized views in a database, especially ina  data warehouse. Just refreshing all of them every 24 hours may be adequate in some scenarios, but leaves room for improvement in other scenarios.
 
 ## Currently implemented features
-* Detect dependencies between materialized views on order to do a `REFRESH` on all your materialized views in topological order.
+* Detect dependencies between materialized views in order to do a `REFRESH` on all materialized views in topological order.
 * Parallelization: You can choose to refresh multiple materialized views at the same time. You may find this useful if refreshing a
 materialized view sometimes takes a very long time, e.g. due to locks, while other materialized views are not prone to locks and can be
 refreshed very quickly. In those cases, parallelization can avoid that materialized views that can be refreshed quickly won't have too wait
