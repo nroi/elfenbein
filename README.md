@@ -5,7 +5,7 @@ refreshes your materialized views in the correct order, with the transitive depe
 
 
 ## Motivation
-You may find elfenbein useful if you have lots of materialized views in a database, especially ina  data warehouse. Just refreshing all of them every 24 hours may be adequate in some scenarios, but leaves room for improvement in other scenarios.
+You may find elfenbein useful if you have lots of materialized views in a database, especially ina  data warehouse. Just refreshing all of them in any arbitrary order every 24 hours may be adequate in some scenarios, but leaves room for improvement in other scenarios.
 
 ## Currently implemented features
 * Detect dependencies between materialized views in order to do a `REFRESH` on all materialized views in topological order.
