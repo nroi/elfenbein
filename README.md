@@ -36,3 +36,11 @@ the lower the frequency.
 
 ## Caveats
 Please note that postgresql does not provide a method to query the last `REFRESH` time of a materialized view. Elfenbein will therefore always store the refresh times itself after it has refreshed a materialized view. Obviously, if you execute a `REFRESH` operation outside of elfenbein, then elfenbein has no way of knowing so and therefore shows outdated refresh times.
+
+# Build
+
+Elfenbein is written in Kotlin, a JVM language, and can be built with gradle. Run:
+```bash
+./gradlew build
+```
+to build a jar file.
