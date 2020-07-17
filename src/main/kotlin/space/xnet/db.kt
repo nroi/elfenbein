@@ -49,9 +49,7 @@ fun parsePgPass(lines: List<String>): List<PgPassEntry> {
     fun fromLine(line: String): PgPassEntry {
 
         val entries = line.trim().split(":")
-        if (entries.size != 5) {
-            throw IllegalArgumentException()
-        }
+        require(entries.size == 5)
         return PgPassEntry(
             entries[0],
             entries[1],
