@@ -6,7 +6,7 @@ import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.sql.SQLException
 
-private const val NUM_THREADS = 2
+private const val NUM_THREADS = 1
 
 class Command: CliktCommand() {
     private val schema by option(metavar="SCHEMA", help="refresh only materialized views in the given schema")
