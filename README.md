@@ -1,11 +1,11 @@
 # Elfenbein
 
-Elfenbein helps you to keep all materialized views in a postgresql database up to date. In particular, it
+Elfenbein helps you to keep all materialized views in a PostgreSQL database up to date. In particular, it
 refreshes your materialized views in the correct order, with the transitive dependencies of a materialized view being refreshed before the materialized view itself. For instance, if materialized view `B` depends on materialized view `A`, then `A` will be refreshed before `B`.
 
 
 ## Motivation
-You may find elfenbein useful if you have lots of materialized views in a database, especially ina  data warehouse. Just refreshing all of them in any arbitrary order every 24 hours may be adequate in some scenarios, but leaves room for improvement in other scenarios.
+You may find elfenbein useful if you have lots of materialized views in a database, especially in a data warehouse. Just refreshing all of them in any arbitrary order every 24 hours may be adequate in some scenarios, but leaves room for improvement in other scenarios.
 
 ## Currently implemented features
 * Detect dependencies between materialized views in order to do a `REFRESH` on all materialized views in topological order.
@@ -26,16 +26,16 @@ the lower the frequency.
   * Define thresholds: materialized views must not take more than x minutes to refresh. If they haven't successfully refreshed within this threshold, the refresh-process is aborted, an error is logged.
   * set the refresh time and refresh thresholds for a specific materialized view manually.
   * Users should be able to make those adjustments by simply updating tables. After all, elfenbein-users are most likely SQL-savvy 
- 
+
  ## Unsolved problems so far
- 
+
  * Even if a materialized view takes only a few minutes to refresh, you may not want to refresh it at a given time frame because non-concurrent refreshs cannot happen concurrently with `SELECT`s on the same materialized view. Which means that your refresh process can annoy users who want to fetch data, create reports, etc. But not all materialized views can be refreshed `CONCURRENTLY`. Proposed solutions include:
    * Let the user define two time slots: production and maintenance. non-concurrent refresh happens only during maintenance.
    * During production, the refresh threshold is lower than during maintenance (meaning we could abort a refresh after just a few seconds).
    * During production, only non-concurrent refreshs may happen.
 
 ## Caveats
-Please note that postgresql does not provide a method to query the last `REFRESH` time of a materialized view. Elfenbein will therefore always store the refresh times itself after it has refreshed a materialized view. Obviously, if you execute a `REFRESH` operation outside of elfenbein, then elfenbein has no way of knowing so and therefore shows outdated refresh times.
+Please note that PostgreSQL does not provide a method to query the last `REFRESH` time of a materialized view. Elfenbein will therefore always store the refresh times itself after it has refreshed a materialized view. Obviously, if you execute a `REFRESH` operation outside of elfenbein, then elfenbein has no way of knowing so and therefore shows outdated refresh times.
 
 # Build
 
