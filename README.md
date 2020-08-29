@@ -9,6 +9,7 @@ You may find elfenbein useful if you have lots of materialized views in a databa
 
 ## Currently implemented features
 * Detect dependencies between materialized views in order to do a `REFRESH` on all materialized views in topological order.
+* Define a priorities for materialized views so that a given materialized view can be refreshed before another materialized view (if the dependencies allow doing so).
 * Parallelization: You can choose to refresh multiple materialized views at the same time. You may find this useful if refreshing a
 materialized view sometimes takes a very long time, e.g. due to locks, while other materialized views are not prone to locks and can be
 refreshed very quickly. In those cases, parallelization can avoid that materialized views that can be refreshed quickly won't have too wait
