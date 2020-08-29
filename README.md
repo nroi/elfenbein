@@ -47,5 +47,17 @@ to build a jar file.
 
 ## Usage
 
-Elfenbein uses the same environment variables used by `libpq`, in particular: `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` and `PGPASSWORD`.
+Notice that elfenbein creates new tables in your database. In particular, the table `mat_view_refresh_times` is used to log the duration
+of refreshing the materialized views, and `elfenbein_settings` is used to associate materialized views with a `priority` value so that
+materialized views with a lower value are prioritized before those with a larger value.
+
+Elfenbein uses the same environment variables used by `libpq`, in particular: `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` and `PGSSLMODE`.
 If you prefer not to set `PGPASSWORD` due to security reasons, you can also use a [.pgpass](https://www.postgresql.org/docs/12/libpq-pgpass.html) file.
+
+Set the environment variables and start elfenbein, for example:
+
+```bash
+PGHOST=localhost PGPORT=5432 PGDATABASE=postgres PGUSER=postgres PGPASSWORD=postgres PGSSLMODE=disable java -jar build/libs/elfenbein-1.0-SNAPSHOT.jar
+```
+
+Elfenbein will then immediately start to refresh the materialized views in your database.
