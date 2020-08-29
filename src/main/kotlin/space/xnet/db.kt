@@ -1,13 +1,14 @@
 package space.xnet
 
 import java.io.File
-import java.lang.IllegalArgumentException
 
-data class PgPassEntry(val hostname: String,
-                       val port: String,
-                       val database: String,
-                       val user: String,
-                       val password: String) {
+data class PgPassEntry(
+    val hostname: String,
+    val port: String,
+    val database: String,
+    val user: String,
+    val password: String
+) {
 
     fun toJdbcUrl(sslMode: String?): String {
         val applicationName = "elfenbein"
@@ -20,7 +21,7 @@ data class PgPassEntry(val hostname: String,
 }
 
 
-data class MaterializedView(val schema: String, val name: String) {
+data class MaterializedView(val schema: String, val name: String, override val priority: Int) : Priority {
     fun getRefreshStatement(): String {
         return "refresh materialized view concurrently $schema.$name"
     }
@@ -41,8 +42,23 @@ data class MaterializedView(val schema: String, val name: String) {
     fun getDurationLogStatement(): String =
         "insert into $schema.mat_view_refresh_times (schema, mat_view, refresh_start, refresh_end, duration) " +
                 "values  ('$schema', '$name', now(), clock_timestamp(), clock_timestamp() - now());"
+
+    fun insertSettingsStatement(): String = """
+        |insert into public.elfenbein_settings (schema, mat_view, priority, created_at)
+        |values ('$schema', '$name', default, default)
+        |on conflict do nothing;
+    """.trimMargin()
 }
 
+fun getSettingsTableStatement(): String = """
+        |create table if not exists public.elfenbein_settings (
+        |   schema text not null,
+        |   mat_view text not null,
+        |   priority int4 not null default 100,
+        |   created_at timestamptz not null default now(),
+        |   primary key (schema, mat_view)
+        |);
+    """.trimMargin()
 
 fun parsePgPass(lines: List<String>): List<PgPassEntry> {
 
@@ -63,17 +79,24 @@ fun parsePgPass(lines: List<String>): List<PgPassEntry> {
 }
 
 
-fun getPgPassEntryFromEnv(): PgPassEntry? {
+fun getPgPassEntryFromEnv(): PgPassEntry {
     val host = System.getenv("PGHOST") ?: "localhost"
     val port = System.getenv("PGPORT") ?: "5432"
     val database = System.getenv("PGDATABASE") ?: "postgres"
     val user = System.getenv("PGUSER") ?: "postgres"
-    val homeDir = System.getenv("HOME")!!
 
-    val lines = File(homeDir, ".pgpass").readLines()
+    return when (val password: String? = System.getenv("PGPASSWORD")) {
+        null -> {
+            val homeDir = System.getenv("HOME")!!
+            val lines = File(homeDir, ".pgpass").readLines()
 
-    return parsePgPass(lines).find { pgPassEntry ->
-        val pgPassEntryFromEnv = PgPassEntry(host, port, database, user, pgPassEntry.password)
-        pgPassEntry == pgPassEntryFromEnv
+            parsePgPass(lines).find { pgPassEntry ->
+                val pgPassEntryFromEnv = PgPassEntry(host, port, database, user, pgPassEntry.password)
+                pgPassEntry == pgPassEntryFromEnv
+            }!!
+        }
+        else -> PgPassEntry(host, port, database, user, password)
     }
+
 }
+
