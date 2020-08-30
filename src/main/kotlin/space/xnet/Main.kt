@@ -40,9 +40,6 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
     val connection = DriverManager.getConnection(url, user, password)
     val taskDescriptions = connection.use { usedConnection ->
         usedConnection.autoCommit = false
-        val matViewsStatement = usedConnection.prepareStatement(matViewsQuery)
-        val matViewsResultSet = matViewsStatement.executeQuery()
-
         fun insertSettings() {
             val settingsTableStatement = usedConnection.prepareStatement(getSettingsTableStatement())
             settingsTableStatement.execute()
@@ -50,6 +47,9 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
         }
 
         insertSettings()
+
+        val matViewsStatement = usedConnection.prepareStatement(matViewsQuery)
+        val matViewsResultSet = matViewsStatement.executeQuery()
 
         while (matViewsResultSet.next()) {
             val schema = matViewsResultSet.getString(1)
