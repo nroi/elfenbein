@@ -1,9 +1,11 @@
-select source_ns.nspname          as source_schema,
-       source_mat_view.relname    as source_mat_view,
-       coalesce(s1.priority, 100) as source_priority,
-       destination_ns.nspname     as dependent_schema,
-       dependent_mat_view.relname as dependent_mat_view,
-       coalesce(s2.priority, 100) as dependent_priority
+select source_ns.nspname                                                as source_schema,
+       source_mat_view.relname                                          as source_mat_view,
+       coalesce(s1.priority, 100)                                       as source_priority,
+       extract(epoch from coalesce(s1.refresh_timeout, '3h'::interval)) as source_refresh_timeout,
+       destination_ns.nspname                                           as dependent_schema,
+       dependent_mat_view.relname                                       as dependent_mat_view,
+       coalesce(s2.priority, 100)                                       as dependent_priority,
+       extract(epoch from coalesce(s2.refresh_timeout, '3h'::interval)) as dependent_refresh_timeout
 from pg_depend
          inner join pg_rewrite on
     pg_depend.objid = pg_rewrite.oid
@@ -27,5 +29,7 @@ from pg_depend
 where dependent_mat_view.relkind = 'm'
   and source_mat_view.relkind = 'm'
   and pg_attribute.attnum > 0
-group by source_mat_view, source_schema, source_priority, dependent_mat_view, dependent_schema, dependent_priority
-order by source_mat_view, source_schema, source_priority, dependent_mat_view, dependent_schema, dependent_priority
+group by source_mat_view, source_schema, source_priority, source_refresh_timeout, dependent_mat_view, dependent_schema,
+         dependent_priority, dependent_refresh_timeout
+order by source_mat_view, source_schema, source_priority, source_refresh_timeout, dependent_mat_view, dependent_schema,
+         dependent_priority, dependent_refresh_timeout

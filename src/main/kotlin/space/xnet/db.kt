@@ -12,23 +12,29 @@ data class PgPassEntry(
 
     fun toJdbcUrl(sslMode: String?): String {
         val applicationName = "elfenbein"
-        val suffix = if (sslMode != null)
+        val suffix = if (sslMode != null) {
             "?sslmode=$sslMode&ApplicationName=$applicationName"
-        else
+        } else {
             "?ApplicationName=$applicationName"
+        }
         return "jdbc:postgresql://$hostname:$port/$database$suffix"
     }
 }
 
 
-data class MaterializedView(val schema: String, val name: String, override val priority: Int) : Priority {
-    fun getRefreshStatement(): String {
-        return "refresh materialized view concurrently $schema.$name"
-    }
+data class MaterializedView(val schema: String,
+                            val name: String,
+                            val refreshTimeoutSeconds: Int,
+                            override val priority: Int) : Priority {
 
-    fun getRefreshFallbackStatement(): String {
-        return "refresh materialized view $schema.$name"
-    }
+    fun getTimeoutStatement(): String =
+        "set local statement_timeout to '${refreshTimeoutSeconds}s'"
+
+    fun getRefreshStatement(): String =
+        "refresh materialized view concurrently $schema.$name"
+
+    fun getRefreshFallbackStatement(): String =
+        "refresh materialized view $schema.$name"
 
     fun getDurationLogTableStatement(): String =
         "create table if not exists $schema.mat_view_refresh_times (" +
@@ -44,8 +50,8 @@ data class MaterializedView(val schema: String, val name: String, override val p
                 "values  ('$schema', '$name', now(), clock_timestamp(), clock_timestamp() - now());"
 
     fun insertSettingsStatement(): String = """
-        |insert into public.elfenbein_settings (schema, mat_view, priority, created_at)
-        |values ('$schema', '$name', default, default)
+        |insert into public.elfenbein_settings (schema, mat_view, priority, refresh_timeout, created_at)
+        |values ('$schema', '$name', default, default, default)
         |on conflict do nothing;
     """.trimMargin()
 }
@@ -55,6 +61,7 @@ fun getSettingsTableStatement(): String = """
         |   schema text not null,
         |   mat_view text not null,
         |   priority int4 not null default 100,
+        |   refresh_timeout interval not null default '3 hours'::interval,
         |   created_at timestamptz not null default now(),
         |   primary key (schema, mat_view)
         |);

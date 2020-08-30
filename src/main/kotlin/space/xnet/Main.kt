@@ -55,7 +55,14 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
             val schema = matViewsResultSet.getString(1)
             val name = matViewsResultSet.getString(2)
             val priority = matViewsResultSet.getInt(3)
-            views.add(MaterializedView(schema, name, priority))
+            val refreshTimeoutSeconds = matViewsResultSet.getInt(4)
+            val materializedView = MaterializedView(
+                schema = schema,
+                name = name,
+                priority = priority,
+                refreshTimeoutSeconds = refreshTimeoutSeconds
+            )
+            views.add(materializedView)
         }
 
         if (views.isEmpty()) {
@@ -73,11 +80,23 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
             val sourceSchema = dependenciesResultSet.getString(1)
             val sourceName = dependenciesResultSet.getString(2)
             val sourcePriority = dependenciesResultSet.getInt(3)
-            val destinationSchema = dependenciesResultSet.getString(4)
-            val destinationName = dependenciesResultSet.getString(5)
-            val destinationPriority = dependenciesResultSet.getInt(6)
-            val source = MaterializedView(sourceSchema, sourceName, sourcePriority)
-            val destination = MaterializedView(destinationSchema, destinationName, destinationPriority)
+            val sourceRefreshTimeout = dependenciesResultSet.getInt(4)
+            val destinationSchema = dependenciesResultSet.getString(5)
+            val destinationName = dependenciesResultSet.getString(6)
+            val destinationPriority = dependenciesResultSet.getInt(7)
+            val destinationRefreshTimeout = dependenciesResultSet.getInt(8)
+            val source = MaterializedView(
+                schema = sourceSchema,
+                name = sourceName,
+                priority = sourcePriority,
+                refreshTimeoutSeconds = sourceRefreshTimeout
+            )
+            val destination = MaterializedView(
+                schema = destinationSchema,
+                name = destinationName,
+                refreshTimeoutSeconds = destinationRefreshTimeout,
+                priority = destinationPriority
+            )
             taskDescriptions.add(destination.dependsOn(source))
         }
 
@@ -92,6 +111,7 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
                 println("Skip materialized view ${matView.schema}.${matView.name}")
             } else {
                 val statementString = matView.getRefreshStatement()
+                val timeoutStatement = usedConnection.prepareStatement(matView.getTimeoutStatement())
                 val initialRefreshStatement = usedConnection.prepareStatement(statementString)
                 val logTableStatement = usedConnection.prepareStatement(matView.getDurationLogTableStatement())
                 val durationLogStatement = usedConnection.prepareStatement(matView.getDurationLogStatement())
@@ -101,7 +121,9 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
                     usedConnection.commit()
                 }
                 fun refreshAndLog(refreshStatement: PreparedStatement) {
+                    timeoutStatement.execute()
                     refreshStatement.execute()
+                    usedConnection.commit()
                     logTableStatement.execute()
                     durationLogStatement.execute()
                     usedConnection.commit()
@@ -118,10 +140,15 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
                         val fallbackRefreshStatement = usedConnection.prepareStatement(fallbackStatementString)
                         println("attempt to refresh non-concurrently")
                         println(fallbackStatementString)
-                        refreshAndLog(fallbackRefreshStatement)
+                        try {
+                            refreshAndLog(fallbackRefreshStatement)
+                        } catch (e: SQLException) {
+                            usedConnection.rollback()
+                            e.printStackTrace()
+                        }
                     } else {
                         usedConnection.rollback()
-                        throw e
+                        e.printStackTrace()
                     }
                 }
             }
