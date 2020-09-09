@@ -123,7 +123,6 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
                 fun refreshAndLog(refreshStatement: PreparedStatement) {
                     timeoutStatement.execute()
                     refreshStatement.execute()
-                    usedConnection.commit()
                     logTableStatement.execute()
                     durationLogStatement.execute()
                     usedConnection.commit()
