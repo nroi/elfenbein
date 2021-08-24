@@ -2,6 +2,7 @@ package space.xnet
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.split
 import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.sql.SQLException
@@ -12,11 +13,18 @@ private const val DEFAULT_PGSSLMODE = "prefer"
 
 class Command: CliktCommand() {
     private val schema by option(metavar="SCHEMA", help="refresh only materialized views in the given schema")
+    private val skipViews by option(metavar="SKIP").split(",")
 
     override fun run() {
         val result = getPgPassEntryFromEnv()
         val sslMode = System.getenv("PGSSLMODE") ?: DEFAULT_PGSSLMODE
-        refresh(result.toJdbcUrl(sslMode), result.user, result.password, schema)
+        refresh(
+            url = result.toJdbcUrl(sslMode),
+            user = result.user,
+            password = result.password,
+            onlySchema = schema,
+            skipViews = skipViews ?: emptyList()
+        )
     }
 }
 
@@ -25,7 +33,7 @@ fun main(args: Array<String>) {
     Command().main(args)
 }
 
-fun refresh(url: String, user: String, password: String, onlySchema: String?) {
+fun refresh(url: String, user: String, password: String, onlySchema: String?, skipViews: List<String>) {
 
     val matViewsDependenciesQuery = Thread.currentThread().contextClassLoader
         .getResource("mat_views_dependencies.sql")!!
@@ -106,7 +114,9 @@ fun refresh(url: String, user: String, password: String, onlySchema: String?) {
     taskQueue<MaterializedView, Unit>(taskDescriptions).runParallel(NUM_THREADS) { matView ->
         val threadConnection = DriverManager.getConnection(url, user, password)
         threadConnection.autoCommit = false
-        if (onlySchema != null && matView.schema != onlySchema) {
+        val skipSchema = onlySchema != null && matView.schema != onlySchema
+        val skipView = skipViews.any { it.equals(matView.name, ignoreCase = true) }
+        if (skipSchema || skipView) {
             println("Skip materialized view ${matView.schema}.${matView.name}")
         } else {
             val statementString = matView.getRefreshStatement()
